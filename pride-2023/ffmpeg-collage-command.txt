@@ -1,0 +1,15 @@
+ffmpeg
+-i SmallPrideBubbles.gif
+-i SmallTransBubbles.gif
+-i SmallEnbyBubbles.gif
+-i PrideSnakes.gif
+-filter_complex "nullsrc=size=600x600 [base];
+[0:v] setpts=PTS-STARTPTS, scale=300x300 [upperleft];
+[1:v] setpts=PTS-STARTPTS, scale=300x300 [upperright];
+[2:v] setpts=PTS-STARTPTS, scale=300x300 [lowerleft];
+[3:v] setpts=PTS-STARTPTS, scale=300x300 [lowerright];
+[base][upperleft] overlay=shortest=1 [tmp1];
+[tmp1][upperright] overlay=shortest=1:x=300 [tmp2];
+[tmp2][lowerleft] overlay=shortest=1:y=300 [tmp3];
+[tmp3][lowerright] overlay=shortest=1:x=300:y=300"
+-c:v libx264 output.gif

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="style.css" rel="stylesheet" type="text/css">
+  <title>Pride 2023</title>
+</head>
+
+<body>
+  <main>
+	<div id="vue">
+		<select v-model="selectedPreset">
+			<option v-for="(preset, name) in presets" :key="name">{{ name }}</option>
+		</select>
+		<button @click="applyPreset(selectedPreset)">Apply preset</button>
+		<button @click="appendPreset(selectedPreset)">Append preset</button>
+		<button @click="addNewColor()">Add color</button>
+		<button @click="randomizeAll()">Randomize everything</button>
+		<button @click="renderCalls.resetBubbles()">Reset bubbles</button>
+		<br />
+		<span>Horizontal Stripes</span><input type="checkbox" v-model="horizontalStripes" />
+		<div style="display: flex; flex-direction: column;">
+			<div v-for="(color, index) in colors">
+				<input type="color" v-model="color.value" />
+				<input type="number" min="1" v-model="color.weight" />
+				<button @click="colors.splice(index, 1)">❌</button>
+			</div>
+		</div>
+	</div>
+	<div id="render"></div>
+  </main>
+  <script src="../p5.min.js"></script>
+  <script src="vue.global.js"></script>
+  <script src="sketch.js"></script>
+</body>
+
+</html>
