@@ -11,23 +11,82 @@
 <body>
   <main>
 	<div id="vue">
-		<select v-model="selectedPreset">
-			<option v-for="(preset, name) in presets" :key="name">{{ name }}</option>
-		</select>
-		<button @click="applyPreset(selectedPreset)">Apply preset</button>
-		<button @click="appendPreset(selectedPreset)">Append preset</button>
-		<button @click="addNewColor()">Add color</button>
-		<button @click="randomizeAll()">Randomize everything</button>
-		<button @click="renderCalls.resetBubbles()">Reset bubbles</button>
-		<br />
-		<span>Horizontal Stripes</span><input type="checkbox" v-model="horizontalStripes" />
-		<div style="display: flex; flex-direction: column;">
-			<div v-for="(color, index) in colors">
-				<input type="color" v-model="color.value" />
-				<input type="number" min="1" v-model="color.weight" />
-				<button @click="colors.splice(index, 1)">❌</button>
+		<fieldset class="vertical-flex">
+			<legend>Actions</legend>
+			<div class="horizontal-flex">
+				<button @click="saveToLocalStorage()">Save</button>
+				<button @click="resetAll()">Reset everything (delete auto-save)</button>
 			</div>
-		</div>
+			<div>Last save: {{ lastSave?.toLocaleString() ?? "N/A" }}</div>
+		</fieldset>
+
+		<fieldset class="vertical-flex">
+			<legend>Colors</legend>
+
+			<fieldset class="horizontal-flex">
+				<legend>Presets</legend>
+				<select v-model="selectedPreset">
+					<option v-for="(preset, name) in presets" :key="name">{{ name }}</option>
+				</select>
+				<button @click="applyPreset(selectedPreset)">Apply preset</button>
+				<button @click="appendPreset(selectedPreset)">Append preset</button>
+			</fieldset>
+			<div class="horizontal-flex">
+				<button @click="addNewColor()">Add color</button>
+				<button @click="randomizeColors()">Randomize all colors</button>
+			</div>
+			<div class="vertical-flex">
+				<div class="horizontal-flex" v-for="(color, index) in config.colors">
+					<span>Color:</span>
+					<input type="text" v-model="color.value" />
+					<input type="color" v-model="color.value" />
+					<span>Weight:</span>
+					<input type="number" min="1" v-model="color.weight" />
+					<button :disabled="colorCount == 1" @click="config.colors.splice(index, 1)">Remove</button>
+					<button @click="addNewColor(index + 1)">Add after</button>
+				</div>
+			</div>
+		</fieldset>
+
+		<fieldset>
+			<legend>Stripes</legend>
+			<label>Horizontal Stripes</label>
+			<input type="checkbox" v-model="config.horizontalStripes" />
+		</fieldset>
+
+		<fieldset class="vertical-flex">
+			<legend>Bubbles</legend>
+			<button @click="doRenderCall(renderCalls.resetBubbles)">Reset bubbles</button>
+			<div class="horizontal-flex">
+				<label>Bubbles count:</label>
+				<input type="number" min="0" step="10" v-model="config.bubbles.maxCount" />
+				<label>Has border:</label>
+				<input type="checkbox" v-model="config.bubbles.border" />
+			</div>
+			<div class="horizontal-flex">
+				<label>Min size:</label>
+				<input type="number" min="1" :max="config.bubbles.maxSize" v-model="config.bubbles.minSize" />
+				<label>Max size:</label>
+				<input type="number" :min="config.bubbles.minSize" v-model="config.bubbles.maxSize" />
+				<label>Roundness:</label>
+				<input type="number" min="0" :max="config.bubbles.maxSize" v-model="config.bubbles.roundness" />
+			</div>
+			<div class="horizontal-flex">
+				<label>Min speed:</label>
+				<input type="number" min="0.1" :max="config.bubbles.maxSpeed" step="0.1" v-model="config.bubbles.minSpeed" />
+				<label>Max speed:</label>
+				<input type="number" :min="config.bubbles.minSpeed" step="0.1" v-model="config.bubbles.maxSpeed" />
+			</div>
+		</fieldset>
+
+		<fieldset class="vertical-flex">
+			<legend>Import / Export</legend>
+			<div class="horizontal-flex">
+				<button @click="doExport()">Export</button>
+				<button @click="doImport()">Import</button>
+			</div>
+			<textarea :rows="ioData == '' ? 5 : 30" v-model="ioData"></textarea>
+		</fieldset>
 	</div>
 	<div id="render"></div>
   </main>

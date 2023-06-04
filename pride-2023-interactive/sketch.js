@@ -3,7 +3,8 @@ createApp({
   	data()
 	{
     		return {
-			horizontalStripes: true,
+			ioData: "",
+			lastSave: null,
 			selectedPreset: "",
 			presets: {
 				"Rainbow":
@@ -37,7 +38,19 @@ createApp({
 					colors: [ "#FE007F", "#9832FF", "#00B8E7" ]
 				}
 			},
-			colors: [],
+			config: {
+				horizontalStripes: true,
+				colors: [],
+				bubbles: {
+					maxCount: 100,
+					border: true,
+					minSize: 10,
+					maxSize: 30,
+					roundness: 10,
+					minSpeed: 0.2,
+					maxSpeed: 1
+				}
+			},
 			renderCalls: {
 				resetBubbles: null,
 				redrawFlag: null
@@ -46,27 +59,55 @@ createApp({
   	},
 	computed:
 	{
-		colorCount() { return this.colors.length; },
+		colorCount() { return this.config.colors.length; },
 		totalWeight() {
 			let sum = 0;
-			this.colors.forEach(color => sum += color.weight);
+			this.config.colors.forEach(color => sum += color.weight);
 			return sum;
 		}
 	},
 	methods:
 	{
+		resetAll()
+		{
+			localStorage.removeItem("auto-save");
+			location.reload();
+		},
+		saveToLocalStorage()
+		{
+			localStorage.setItem("auto-save", btoa(JSON.stringify(this.config)));
+			this.lastSave = new Date();
+		},
+		doExport()
+		{
+			this.ioData = JSON.stringify(this.config, null, "\t");
+		},
+		doImport()
+		{
+			const parsed = JSON.parse(this.ioData);
+			if (typeof(parsed.horizontalStripes) == "boolean")
+			{
+				this.config.horizontalStripes = parsed.horizontalStripes;
+			}
+
+			if (Array.isArray(parsed.colors))
+			{
+				this.config.colors = parsed.colors;
+			}
+			this.doRenderCall(this.renderCalls.resetBubbles);
+		},
 		doRenderCall(renderCall)
 		{
 			if (renderCall)
 			{
 				renderCall();
-			}	
+			}
 		},
 		applyPreset(name)
 		{
 			const preset = this.presets[name];
-			this.horizontalStripes = preset.horizontal;
-			this.colors = preset.colors.map(color => {
+			this.config.horizontalStripes = preset.horizontal;
+			this.config.colors = preset.colors.map(color => {
 				if (typeof(color) == "string")
 				{
 					return {
@@ -82,7 +123,7 @@ createApp({
 		appendPreset(name)
 		{
 			const preset = this.presets[name];
-			this.colors.push(...preset.colors.map(color => {
+			this.config.colors.push(...preset.colors.map(color => {
 				if (typeof(color) == "string")
 				{
 					return {
@@ -93,13 +134,14 @@ createApp({
 				return color;
 			}));
 		},
-		addNewColor()
+		addNewColor(index)
 		{
-			this.colors.push({ weight: 1, value: this.getRandomColor() });
+			index = index ?? this.config.colors.length;
+			this.config.colors.splice(index, 0, { weight: 1, value: this.getRandomColor() });
 		},
-		randomizeAll()
+		randomizeColors()
 		{
-			this.colors.forEach(color => {
+			this.config.colors.forEach(color => {
 				color.weight = Math.floor(1 + Math.random() * 3);
 				color.value = this.getRandomColor();
 			});
@@ -117,7 +159,7 @@ createApp({
 	},
 	watch:
 	{
-		colors:
+		"config.colors":
 		{
 			handler(newValue, oldValue)
 			{
@@ -125,7 +167,7 @@ createApp({
 			},
 			deep: true
 		},
-		horizontalStripes(newValue, oldValue)
+		"config.horizontalStripes"(newValue, oldValue)
 		{
 			this.doRenderCall(this.renderCalls.redrawFlag);
 		}
@@ -133,7 +175,24 @@ createApp({
 	mounted()
 	{
 		this.selectedPreset = Object.keys(this.presets)[0];
-		this.applyPreset(this.selectedPreset);
+
+		const autoSaveContent = localStorage.getItem("auto-save");
+		if (autoSaveContent !== null)
+		{
+			try
+			{
+				this.config = JSON.parse(atob(autoSaveContent));
+			}
+			catch
+			{
+				this.resetAll();
+			}
+		}
+		else
+		{
+			this.applyPreset(this.selectedPreset);
+		}
+		setInterval(() => this.saveToLocalStorage(), 5000);
 
 		const sketchScript = sketch => {
 			const flagUrl = "";
@@ -147,7 +206,6 @@ createApp({
 		
 			let drops = [];
 			let firstFill = true;
-			const dropsMaxCount = 100;
 			
 			let flagBehindGraphics;
 		
@@ -179,10 +237,10 @@ createApp({
 			const drawFlag = graphics =>
 			{
 				const totalWeight = this.totalWeight;
-				if (this.horizontalStripes)
+				if (this.config.horizontalStripes)
 				{
 					let heightSum = 0;
-					for (const color of this.colors)
+					for (const color of this.config.colors)
 					{
 						const stripeHeight = Math.ceil(color.weight * height / totalWeight);
 						graphics.fill(color.value);
@@ -193,7 +251,7 @@ createApp({
 				else
 				{
 					let widthSum = 0;
-					for (const color of this.colors)
+					for (const color of this.config.colors)
 					{
 						const stripeWidth = Math.ceil(color.weight * height / totalWeight);
 						graphics.fill(color.value);
@@ -211,32 +269,45 @@ createApp({
 			sketch.draw = () => {
 				const secDelta = sketch.deltaTime / 1000 * globalSpeedMultiplier;
 				totalTime += secDelta;
+
+				if (this.colorCount == 0)
+					return;
 			
 				sketch.image(flagBehindGraphics, 0, 0, width, height);
 			
+				const doStrokes = this.config.bubbles.border;
+				if (!doStrokes)
+				{
+					sketch.noStroke();
+				}
 				for(const drop of drops)
 				{
-					sketch.stroke(drop.strokeColor.value);
+					if (doStrokes)
+					{
+						sketch.stroke(drop.strokeColor.value);
+					}
 					sketch.fill(drop.fillColor.value);
-					sketch.rect(drop.x, drop.y, drop.size, drop.size, 10);
+					sketch.rect(drop.x, drop.y, drop.size, drop.size, this.config.bubbles.roundness);
 					drop.x = drop.startX + sketch.sin(totalTime + drop.timeOffset) * drop.xWaveSize;
 					drop.y -= drop.speed * secDelta * 100;
 				}
 				
 				drops = drops.filter(drop => drop.y > -drop.size);
 				
-				while (drops.length < dropsMaxCount)
+				while (drops.length < this.config.bubbles.maxCount)
 				{
-					const fillColor = randFromArrayExcept(this.colors);
-					const strokeColor = randFromArrayExcept(this.colors, [ fillColor ]);
+					const fillColor = weightedRandFromArray(this.config.colors);
+					const strokeColor = this.colorCount > 1
+						? weightedRandFromArray(this.config.colors.filter(color => color !== fillColor))
+						: fillColor;
 			
 					let startX = sketch.random(width);
 					drops.push({
 						startX,
 						x: startX,
 						y: firstFill ? sketch.random(height) : height + 10,
-						size: sketch.random(10, 30),
-						speed: sketch.random(0.2, 1),
+						size: sketch.random(this.config.bubbles.minSize, this.config.bubbles.maxSize),
+						speed: sketch.random(this.config.bubbles.minSpeed, this.config.bubbles.maxSpeed),
 						xWaveSize: sketch.random(width / 8, width / 4),
 						timeOffset: sketch.random(-50, 50),
 						strokeColor,
@@ -246,19 +317,18 @@ createApp({
 			
 				firstFill = false;
 			}
-		
-			function randFromArrayExcept(array, exceptions)
+
+			function weightedRandFromArray(array)
 			{
-				exceptions = exceptions || [];
-				while (true)
+				const toPickFrom = [];
+				for (const el of array)
 				{
-					const randIndex = Math.floor(sketch.random(array.length));
-					const randEl = array[randIndex];
-					if (!exceptions.includes(randEl))
+					for (let i = 0; i < el.weight; i++)
 					{
-						return randEl;
+						toPickFrom.push(el);
 					}
 				}
+				return toPickFrom[Math.floor(Math.random() * toPickFrom.length)];
 			}
 		};
 		const p5instance = new p5(sketchScript, document.getElementById("render"));
