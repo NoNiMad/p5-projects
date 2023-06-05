@@ -39,7 +39,12 @@ createApp({
 				}
 			},
 			config: {
-				horizontalStripes: true,
+				background: {
+					draw: true,
+					clearBackground: false,
+					clearColor: "#000000",
+					horizontal: true
+				},
 				colors: [],
 				bubbles: {
 					maxCount: 100,
@@ -84,17 +89,14 @@ createApp({
 		},
 		doImport()
 		{
-			const parsed = JSON.parse(this.ioData);
-			if (typeof(parsed.horizontalStripes) == "boolean")
+			try
 			{
-				this.config.horizontalStripes = parsed.horizontalStripes;
+				this.config = JSON.parse(this.ioData);
 			}
-
-			if (Array.isArray(parsed.colors))
+			catch
 			{
-				this.config.colors = parsed.colors;
+				alert("Failed to parse data.");
 			}
-			this.doRenderCall(this.renderCalls.resetBubbles);
 		},
 		doRenderCall(renderCall)
 		{
@@ -106,7 +108,7 @@ createApp({
 		applyPreset(name)
 		{
 			const preset = this.presets[name];
-			this.config.horizontalStripes = preset.horizontal;
+			this.config.background.horizontal = preset.horizontal;
 			this.config.colors = preset.colors.map(color => {
 				if (typeof(color) == "string")
 				{
@@ -167,7 +169,7 @@ createApp({
 			},
 			deep: true
 		},
-		"config.horizontalStripes"(newValue, oldValue)
+		"config.background.horizontal"(newValue, oldValue)
 		{
 			this.doRenderCall(this.renderCalls.redrawFlag);
 		}
@@ -237,7 +239,7 @@ createApp({
 			const drawFlag = graphics =>
 			{
 				const totalWeight = this.totalWeight;
-				if (this.config.horizontalStripes)
+				if (this.config.background.horizontal)
 				{
 					let heightSum = 0;
 					for (const color of this.config.colors)
@@ -270,10 +272,18 @@ createApp({
 				const secDelta = sketch.deltaTime / 1000 * globalSpeedMultiplier;
 				totalTime += secDelta;
 
+				if (this.config.background.clearBackground)
+				{
+					sketch.background(this.config.background.clearColor);
+				}
+
 				if (this.colorCount == 0)
 					return;
 			
-				sketch.image(flagBehindGraphics, 0, 0, width, height);
+				if (this.config.background.draw)
+				{
+					sketch.image(flagBehindGraphics, 0, 0, width, height);
+				}
 			
 				const doStrokes = this.config.bubbles.border;
 				if (!doStrokes)

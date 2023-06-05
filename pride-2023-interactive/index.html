@@ -15,7 +15,7 @@
 			<legend>Actions</legend>
 			<div class="horizontal-flex">
 				<button @click="saveToLocalStorage()">Save</button>
-				<button @click="resetAll()">Reset everything (delete auto-save)</button>
+				<button @click="resetAll()">Delete save (do that if everything is bugged)</button>
 			</div>
 			<div>Last save: {{ lastSave?.toLocaleString() ?? "N/A" }}</div>
 		</fieldset>
@@ -49,9 +49,21 @@
 		</fieldset>
 
 		<fieldset>
-			<legend>Stripes</legend>
-			<label>Horizontal Stripes</label>
-			<input type="checkbox" v-model="config.horizontalStripes" />
+			<legend>Background</legend>
+
+			<div class="horizontal-flex">
+				<label>Draw stripes:</label>
+				<input type="checkbox" v-model="config.background.draw" />
+				<label>Clear background:</label>
+				<input type="checkbox" v-model="config.background.clearBackground" />
+				<label>Background color:</label>
+				<input type="text" v-model="config.background.clearColor" />
+				<input type="color" v-model="config.background.clearColor" />
+			</div>
+			<div class="horizontal-flex">
+				<label>Horizontal Stripes:</label>
+				<input type="checkbox" v-model="config.background.horizontal" />
+			</div>
 		</fieldset>
 
 		<fieldset class="vertical-flex">
